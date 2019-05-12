@@ -8,13 +8,12 @@
                     <div v-on:click="addNewTask" class="add-new-task">Add</div>
                 </div>
             </div>
-
             <div class="list-container">
                 <!-- INCOMPLETE -->
                 <transition-group name="task-group" tag="div" class="task-group-container">
                     <div class="task" v-for="task in tasksIncomplete" key="task">
                         <div class="list-item-inside">
-                            <div class="task-title">{{task.title}}</div>
+                            <div class="task-title">{{task.name}}</div>
                             <div class="task-active">
                                 <div class="checkbox" @click="toggleDone(task)" v-bind:class="{ active: task.done }"></div>
                             </div>
@@ -22,11 +21,11 @@
                     </div>
                 </transition-group>
 
-                <!-- COMPLETE -->
+                 COMPLETE
                 <transition-group name="task-group" tag="div" class="task-group-container">
                     <div class="task" v-for="task in tasksComplete" key="task">
                         <div class="list-item-inside">
-                            <div class="task-title">{{task.title}}</div>
+                            <div class="task-title">{{task.name}}</div>
                             <div class="task-active">
                                 <div class="checkbox" @click="toggleDone(task)" v-bind:class="{ active: task.done }"></div>
                             </div>
@@ -36,8 +35,8 @@
 
             </div>
 
-            <div v-on:click="showNewTaskPopup" class="add-button">Add New Task</div>
-
+            <div v-on:click="showNewTaskPopup" style="bottom: 55px !important" class="add-button">Add New Task</div>
+            <router-link to="/changeLog" class="add-button" style="color: white; text-decoration: none">Change log</router-link>
         </div>
     </div>
 </template>
@@ -48,14 +47,24 @@
 			return {
 				newTask: false,
 				newTaskText: '',
-				tasksIncomplete: [
-					{title: 'Buy Eggs', done: false},
-					{title: 'Wash Car', done: false},
-					{title: 'Drink Pills', done: false}
-				],
+				tasksIncomplete: [],
 				tasksComplete: []
 			}
 		},
+        mounted() {
+			axios
+				.get('http://192.168.0.103:8002/api/v1/tasks/complete')
+				// .get('http://localhost:8002/api/v1/tasks/complete')
+				.then(response => {
+					this.tasksComplete = JSON.parse(response.data.tasks);
+                }),
+            axios
+				.get('http://192.168.0.103:8002/api/v1/tasks/incomplete')
+                // .get('http://localhost:8002/api/v1/tasks/incomplete')
+                .then(response => {
+                    this.tasksIncomplete = JSON.parse(response.data.tasks);
+                })
+        },
 		watch: {
 			tasks: {
 				handler: function (val, oldVal) {
@@ -70,13 +79,40 @@
 			},
 			addNewTask: function () {
 				if (this.newTaskText !== '') {
-					this.tasksIncomplete.push({title: this.newTaskText, done: false});
+					const newTask = {name: this.newTaskText, done: false};
+					this.tasksIncomplete.push(newTask);
+					axios
+					.post('http://192.168.0.103:8002/api/v1/tasks/new', {
+						// .post('http://localhost:8002/api/v1/tasks/new', {
+							name: newTask.name,
+							done: newTask.done
+						}).then((response) => console.log(response));
+					axios
+					.post('http://192.168.0.103:8002/api/v1/tasks/log', {
+						// .post('http://localhost:8002/api/v1/tasks/log', {
+							value: {newTask: true},
+							key: 'newTask',
+							name: newTask.name,
+						}).then((response) => console.log(response));
 					this.newTaskText = '';
 					this.newTask = false;
 				}
 			},
 			toggleDone: function (task) {
 				task.done = !task.done;
+				axios
+                .post('http://192.168.0.103:8002/api/v1/tasks/setDone', {
+                    // .post('http://localhost:8002/api/v1/tasks/setDone', {
+				    id: task.id,
+                    done: task.done
+                }).then((response) => console.log(response));
+				axios
+				.post('http://192.168.0.103:8002/api/v1/tasks/log', {
+					// .post('http://localhost:8002/api/v1/tasks/log', {
+						value: {oldDone: ! task.done, newDone: task.done},
+						key: 'changeDone',
+						name: task.name,
+					}).then((response) => console.log(response));
 
 				if (task.done === true) {
 					this.$delete(this.tasksIncomplete, this.tasksIncomplete.indexOf(task));
