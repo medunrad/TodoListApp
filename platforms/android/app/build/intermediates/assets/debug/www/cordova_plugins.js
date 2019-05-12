@@ -28,9 +28,9 @@ module.exports = [
 module.exports.metadata = 
 // TOP OF METADATA
 {
-  "cordova-plugin-whitelist": "1.3.3",
   "cordova-plugin-device-motion": "2.0.1",
-  "cordova-plugin-shake": "0.6.0"
+  "cordova-plugin-shake": "0.6.0",
+  "cordova-plugin-whitelist": "1.3.3"
 };
 // BOTTOM OF METADATA
 });

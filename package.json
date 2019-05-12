@@ -72,8 +72,8 @@
       "cordova-plugin-device-motion": {}
     },
     "platforms": [
-      "android",
-      "browser"
+      "browser",
+      "android"
     ]
   }
 }

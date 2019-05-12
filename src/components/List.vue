@@ -9,7 +9,6 @@
                 </div>
             </div>
             <div class="list-container">
-                <!-- INCOMPLETE -->
                 <transition-group name="task-group" tag="div" class="task-group-container">
                     <div class="task" v-for="task in tasksIncomplete" key="task">
                         <div class="list-item-inside">
@@ -21,7 +20,7 @@
                     </div>
                 </transition-group>
 
-                 COMPLETE
+                <span v-if="tasksComplete.length > 0">COMPLETE</span>
                 <transition-group name="task-group" tag="div" class="task-group-container">
                     <div class="task" v-for="task in tasksComplete" key="task">
                         <div class="list-item-inside">
@@ -45,6 +44,11 @@
 		name: 'list',
 		data() {
 			return {
+				previousAcceleration: {
+					x: 0,
+					y: 0,
+					z: 0
+				},
 				newTask: false,
 				newTaskText: '',
 				tasksIncomplete: [],
@@ -52,18 +56,9 @@
 			}
 		},
         mounted() {
-			axios
-				.get('http://192.168.0.103:8002/api/v1/tasks/complete')
-				// .get('http://localhost:8002/api/v1/tasks/complete')
-				.then(response => {
-					this.tasksComplete = JSON.parse(response.data.tasks);
-                }),
-            axios
-				.get('http://192.168.0.103:8002/api/v1/tasks/incomplete')
-                // .get('http://localhost:8002/api/v1/tasks/incomplete')
-                .then(response => {
-                    this.tasksIncomplete = JSON.parse(response.data.tasks);
-                })
+			document.addEventListener("deviceready", this.onDeviceReady, false);
+			this.getCompleteTasks(),
+            this.getIncompleteTasks()
         },
 		watch: {
 			tasks: {
@@ -74,6 +69,72 @@
 			}
 		},
 		methods: {
+			setDone: function (id, done) {
+				axios
+					.post('http://192.168.0.103:8002/api/v1/tasks/setDone', {
+						id: id,
+						done: done
+					}).then((response) => console.log(response));
+            },
+			log: function (value, key, name) {
+				axios
+					.post('http://192.168.0.103:8002/api/v1/tasks/log', {
+						value: value,
+						key: key,
+						name: name,
+					}).then((response) => console.log(response));
+            },
+			createNewTask: function (name, done) {
+				axios
+					.post('http://192.168.0.103:8002/api/v1/tasks/new', {
+						name: name,
+						done: done
+					}).then((response) => console.log(response));
+            },
+			allDone: function () {
+				axios.
+				post('http://192.168.0.103:8002/api/v1/tasks/allDone', {}).then((response) => console.log(response));
+            },
+			getIncompleteTasks: function () {
+				axios
+					.get('http://192.168.0.103:8002/api/v1/tasks/incomplete')
+					.then(response => {
+						this.tasksIncomplete = JSON.parse(response.data.tasks);
+					})
+            },
+            getCompleteTasks: function () {
+				axios
+					.get('http://192.168.0.103:8002/api/v1/tasks/complete')
+					.then(response => {
+						this.tasksComplete = JSON.parse(response.data.tasks);
+					})
+            },
+			onDeviceReady: function () {
+		        navigator.accelerometer.watchAcceleration(this.onSuccess, this.onError, { frequency: 1000 });
+	        },
+			onSuccess: function (acceleration) {
+
+				var accelerationChange = {};
+				if (this.previousAcceleration.x !== null) {
+					accelerationChange.x = Math.abs(this.previousAcceleration.x - acceleration.x);
+					accelerationChange.y = Math.abs(this.previousAcceleration.y - acceleration.y);
+					accelerationChange.z = Math.abs(this.previousAcceleration.z - acceleration.z);
+				}
+
+				this.previousAcceleration = {
+					x: acceleration.x,
+					y: acceleration.y,
+					z: acceleration.z
+				};
+
+				if (accelerationChange.x + accelerationChange.y + accelerationChange.z > 20) {
+					this.allDone();
+				    this.getIncompleteTasks();
+				    this.getCompleteTasks();
+				}
+
+			},
+            onError: function() {},
 			showNewTaskPopup: function () {
 				this.newTask = true;
 			},
@@ -81,39 +142,16 @@
 				if (this.newTaskText !== '') {
 					const newTask = {name: this.newTaskText, done: false};
 					this.tasksIncomplete.push(newTask);
-					axios
-					.post('http://192.168.0.103:8002/api/v1/tasks/new', {
-						// .post('http://localhost:8002/api/v1/tasks/new', {
-							name: newTask.name,
-							done: newTask.done
-						}).then((response) => console.log(response));
-					axios
-					.post('http://192.168.0.103:8002/api/v1/tasks/log', {
-						// .post('http://localhost:8002/api/v1/tasks/log', {
-							value: {newTask: true},
-							key: 'newTask',
-							name: newTask.name,
-						}).then((response) => console.log(response));
+					this.createNewTask(newTask.name, newTask.done);
+					this.log({newTask: true}, 'newTask', newTask.name);
 					this.newTaskText = '';
 					this.newTask = false;
 				}
 			},
 			toggleDone: function (task) {
 				task.done = !task.done;
-				axios
-                .post('http://192.168.0.103:8002/api/v1/tasks/setDone', {
-                    // .post('http://localhost:8002/api/v1/tasks/setDone', {
-				    id: task.id,
-                    done: task.done
-                }).then((response) => console.log(response));
-				axios
-				.post('http://192.168.0.103:8002/api/v1/tasks/log', {
-					// .post('http://localhost:8002/api/v1/tasks/log', {
-						value: {oldDone: ! task.done, newDone: task.done},
-						key: 'changeDone',
-						name: task.name,
-					}).then((response) => console.log(response));
-
+				this.setDone(task.id, task.done);
+				this.log({oldDone: ! task.done, newDone: task.done}, 'changeDone', task.name);
 				if (task.done === true) {
 					this.$delete(this.tasksIncomplete, this.tasksIncomplete.indexOf(task));
 					this.tasksComplete.push(task);
@@ -244,21 +282,5 @@
     .wrapper .container .list-container .task .list-item-inside .task-active .checkbox.active {
         border: 1px solid #1aa295;
         background-color: #1aa295;
-    }
-    .task-group-enter-to {
-        opacity: 1;
-        transform: translateX(0%);
-    }
-    .task-group-leave-active {
-        /*position: absolute;*/
-    }
-    .task-group-group-move {
-        opacity: 1;
-        transition: all 0.5s;
-    }
-    .task-group-enter,
-    .task-group-leave-to {
-        opacity: 0;
-        transform: translateX(-100%);
     }
 </style>

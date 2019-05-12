@@ -2,7 +2,6 @@
     <div class="wrapper">
         <div class="container">
             <div class="list-container">
-                <!-- INCOMPLETE -->
                 <transition-group name="task-group" tag="div" class="task-group-container">
                     <div class="task" v-for="log in logs" key="task">
                         <div class="list-item-inside">
@@ -30,12 +29,16 @@
 			}
         },
         mounted() {
-			axios
-			.get('http://192.168.0.103:8002/api/v1/tasks/changeLog')
-				// .get('http://localhost:8002/api/v1/tasks/changeLog')
-				.then(response => {
-					this.logs = JSON.parse(response.data.logs);
-				})
+			this.getLogs();
+        },
+        methods: {
+			getLogs: function () {
+				axios
+					.get('http://192.168.0.103:8002/api/v1/tasks/changeLog')
+					.then(response => {
+						this.logs = JSON.parse(response.data.logs).slice(0, 11);
+					})
+            }
         }
 	}
 </script>
